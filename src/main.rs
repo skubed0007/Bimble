@@ -52,6 +52,46 @@ fn main() {
                                 }
                             } else if i.trim() == "}" {
                                 continue;
+                            } else if i.trim().starts_with("echonl") {
+                                let enlrg = Regex::new(r#"echonl\((.*?)\);"#).unwrap();
+                                if let Some(cap) = enlrg.captures(i) {
+                                    if let Some(text) = cap.get(1) {
+                                        let text = text.as_str().to_string();
+                                        if text.starts_with("\"") && text.ends_with("\"") {
+                                            continue;
+                                        } else if text.starts_with("\"") && !text.ends_with("\"") {
+                                            println!(
+                                                "{}{}",
+                                                "Error, missing a \" at the end in : ".red(),
+                                                i.trim().red()
+                                            );
+                                            exit(0);
+                                        } else if !text.starts_with("\"") && text.ends_with("\"") {
+                                            println!(
+                                                "{}{}",
+                                                "Error, missing a \" at the beginning in : ".red(),
+                                                i.trim().red()
+                                            );
+                                            exit(0);
+                                        } else {
+                                            // Additional checks for variables can be added here if needed
+                                            continue;
+                                        }
+                                    } else {
+                                        println!(
+                                            "ERROR - Could not capture text inside echonl in line: {}",
+                                            i
+                                        );
+                                    }
+                                } else {
+                                    println!(
+                                        "{}{}",
+                                        "Invalid 'echonl()' syntax :: ".red(),
+                                        i.trim().red()
+                                    );
+                                    println!("{}", "CANCELLING BUILD".blink().blue());
+                                    exit(0);
+                                }
                             }
                         }
                     }
@@ -79,10 +119,5 @@ fn main() {
                 }
             }
         }
-    }
-
-    // Printing the captured function names
-    for func in fns {
-        println!("Captured function name: {}", func);
     }
 }
