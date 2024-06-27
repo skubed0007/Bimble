@@ -1,11 +1,43 @@
-use std::{env::args, fs::File, io::Read, process::exit, thread::sleep, time::Duration};
-
 use clearscreen::clear;
 use colored::Colorize;
 use regex::Regex;
+use std::{env::args, fs::File, io::Read, process::exit, thread::sleep, time::Duration};
 
+#[derive(Clone, Debug)]
+struct Varr {
+    name: String,
+    vtype: Vartypes,
+    vval: String,
+}
+
+#[derive(Debug, Clone)]
+enum Vartypes {
+    String,
+    Fsf,
+    I,
+}
+
+trait Dis {
+    fn dis(v: Varr) {
+        println!(
+            "{}",
+            format!(
+                "var_name : {} : var_type : {:?} : var_val : {} :",
+                v.name, v.vtype, v.vval
+            )
+            .green()
+        );
+    }
+}
+
+impl Dis for Varr {}
+
+#[allow(path_statements)]
 fn main() {
+    let mut vrs: Vec<Varr> = Vec::new();
+    let mut undefined_fn_calls: Vec<String> = Vec::new();
     clear().unwrap();
+    let mut isinfn = false;
     let pf: Vec<String> = args().collect();
     let mut pfci = 0;
 
@@ -19,8 +51,8 @@ fn main() {
 
     let mut fns: Vec<String> = Vec::new();
 
-    for pf in pf.iter().skip(1) {
-        match File::open(pf.clone() + "/main.bb") {
+    for project_folder in pf.iter().skip(1) {
+        match File::open(format!("{}/main.bb", project_folder)) {
             Ok(mut mf) => {
                 println!("{}{:?}", "found main file!! -- ".green(), mf);
                 sleep(Duration::from_millis(500));
@@ -28,69 +60,231 @@ fn main() {
                 match mf.read_to_string(&mut wc) {
                     Ok(_) => {
                         let nlsepcode = wc.split('\n');
-                        for i in nlsepcode.clone() {
-                            if i.starts_with("ON") {
-                                // Adjust the regex to match only the desired pattern
+                        for line in nlsepcode.clone() {
+                            if line.starts_with("ON") && !isinfn {
+                                println!("{}", "Handling function declaration".blue());
+
                                 let funcdeclarerg = Regex::new(r"ON\s+(\w+)\(\)\{").unwrap();
-                                if let Some(cap) = funcdeclarerg.captures(i) {
+                                if let Some(cap) = funcdeclarerg.captures(line) {
                                     if let Some(funcnm) = cap.get(1) {
                                         fns.push(funcnm.as_str().to_string());
+                                        println!(
+                                            "{}{}",
+                                            "Function declared: ".cyan(),
+                                            funcnm.as_str().cyan()
+                                        );
                                     } else {
                                         println!(
-                                            "ERROR - Could not capture function name in line: {}",
-                                            i
+                                            "{}{}",
+                                            "ERROR - Could not capture function name in line: "
+                                                .red(),
+                                            line.red()
                                         );
                                     }
                                 } else {
                                     println!(
                                         "{}{}",
                                         "Function Declare using wrong syntax: ".red(),
-                                        i.red()
+                                        line.red()
                                     );
                                     println!("{}", "CANCELLING BUILD".blink().blue());
                                     exit(0);
                                 }
-                            } else if i.trim() == "}" {
-                                continue;
-                            } else if i.trim().starts_with("echonl") {
-                                let enlrg = Regex::new(r#"echonl\((.*?)\);"#).unwrap();
-                                if let Some(cap) = enlrg.captures(i) {
-                                    if let Some(text) = cap.get(1) {
-                                        let text = text.as_str().to_string();
-                                        if text.starts_with("\"") && text.ends_with("\"") {
-                                            continue;
-                                        } else if text.starts_with("\"") && !text.ends_with("\"") {
-                                            println!(
-                                                "{}{}",
-                                                "Error, missing a \" at the end in : ".red(),
-                                                i.trim().red()
-                                            );
-                                            exit(0);
-                                        } else if !text.starts_with("\"") && text.ends_with("\"") {
-                                            println!(
-                                                "{}{}",
-                                                "Error, missing a \" at the beginning in : ".red(),
-                                                i.trim().red()
-                                            );
-                                            exit(0);
+                                isinfn = !line.ends_with("}");
+                            } else if line.starts_with("ON") && isinfn {
+                                println!(
+                                    "{}{}",
+                                    "Cannot declare functions inside other functions! - ".red(),
+                                    line.red()
+                                );
+                            } else if line.trim() == "}" {
+                                isinfn = false;
+                            } else if line.trim().starts_with("may") {
+                                println!(
+                                    "{}{}",
+                                    "Handling 'variables' - ".green(),
+                                    line.trim().green()
+                                );
+
+                                let vardecltrg =
+                                    Regex::new(r#"may\s+(\w+)\s*=\s*(.+)\s*;"#).unwrap();
+                                if let Some(cap) = vardecltrg.captures(line.trim()) {
+                                    let varnm = cap.get(1).unwrap().as_str().to_string();
+                                    let varval = cap.get(2).unwrap().as_str().to_string();
+                                    let vartype =
+                                        if varval.starts_with('"') && varval.ends_with('"') {
+                                            Vartypes::String
+                                        } else if varval.parse::<i32>().is_ok() {
+                                            Vartypes::I
+                                        } else if varval.parse::<f32>().is_ok() {
+                                            Vartypes::Fsf
                                         } else {
-                                            // Additional checks for variables can be added here if needed
-                                            continue;
+                                            println!(
+                                                "{}{}{}{} :",
+                                                "Invalid variable type! : ".red(),
+                                                varval.red(),
+                                                " : in line : ".red(),
+                                                line.trim().red()
+                                            );
+                                            exit(0);
+                                        };
+                                    let var = Varr {
+                                        name: varnm,
+                                        vtype: vartype,
+                                        vval: varval,
+                                    };
+                                    vrs.push(var.clone());
+                                    Varr::dis(var);
+                                } else {
+                                    println!("{}", "Unable to make variable pattern!!".red());
+                                    exit(0);
+                                }
+                            } else if line.trim().starts_with("echonl") {
+                                println!(
+                                    "{}{}",
+                                    "Handling 'echonl' - ".green(),
+                                    line.trim().green()
+                                );
+                                let enlrg = Regex::new(r#"echonl\((.*?)\)\;"#).unwrap();
+                                if let Some(cap) = enlrg.captures(line) {
+                                    if let Some(text) = cap.get(1) {
+                                        let text = text.as_str();
+                                        let txt = text.split(',');
+                                        for text in txt {
+                                            let text = text.trim();
+                                            if text.starts_with('"') && text.ends_with('"') {
+                                                println!(
+                                                    "{}{}",
+                                                    "Echoing literal: ".cyan(),
+                                                    text.cyan()
+                                                );
+                                            } else {
+                                                let mut found = false;
+                                                for var in vrs.iter() {
+                                                    if var.name == text {
+                                                        found = true;
+                                                        println!(
+                                                            "{}{}",
+                                                            "Echoing variable: ".cyan(),
+                                                            text.cyan()
+                                                        );
+                                                        break;
+                                                    }
+                                                }
+                                                if !found {
+                                                    println!(
+                                                        "{}{}{}{}",
+                                                        "Variable not found in scope: ".red(),
+                                                        text.red(),
+                                                        " in echonl statement: ".red(),
+                                                        line.trim().red()
+                                                    );
+                                                    exit(0);
+                                                }
+                                            }
                                         }
                                     } else {
                                         println!(
                                             "ERROR - Could not capture text inside echonl in line: {}",
-                                            i
+                                            line
                                         );
                                     }
                                 } else {
                                     println!(
                                         "{}{}",
                                         "Invalid 'echonl()' syntax :: ".red(),
-                                        i.trim().red()
+                                        line.trim().red()
                                     );
                                     println!("{}", "CANCELLING BUILD".blink().blue());
                                     exit(0);
+                                }
+                            }
+                            else if line.trim() == "out.flush();"{
+                                println!("{} {}","buffer flusher called here : ",line.trim());
+                            }
+                             else if line.trim().starts_with("echol") {
+                                println!(
+                                    "{}{}",
+                                    "Handling 'echol' - ".green(),
+                                    line.trim().green()
+                                );
+
+                                let enlrg = Regex::new(r#"echol\((.*?)\)\;"#).unwrap();
+                                if let Some(cap) = enlrg.captures(line) {
+                                    if let Some(text) = cap.get(1) {
+                                        let text = text.as_str();
+                                        let txt = text.split(',');
+                                        for text in txt {
+                                            let text = text.trim();
+                                            if text.starts_with('"') && text.ends_with('"') {
+                                                println!(
+                                                    "{}{}",
+                                                    "Echoing literal: ".cyan(),
+                                                    text.cyan()
+                                                );
+                                            } else {
+                                                let mut found = false;
+                                                for var in vrs.iter() {
+                                                    if var.name == text {
+                                                        found = true;
+                                                        println!(
+                                                            "{}{}",
+                                                            "Echoing variable: ".cyan(),
+                                                            text.cyan()
+                                                        );
+                                                        break;
+                                                    }
+                                                }
+                                                if !found {
+                                                    println!(
+                                                        "{}{}{}{}",
+                                                        "Variable not found in scope: ".red(),
+                                                        text.red(),
+                                                        " in echol statement: ".red(),
+                                                        line.trim().red()
+                                                    );
+                                                    exit(0);
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        println!(
+                                            "ERROR - Could not capture text inside echol in line: {}",
+                                            line
+                                        );
+                                    }
+                                } else {
+                                    println!(
+                                        "{}{}",
+                                        "Invalid 'echol()' syntax :: ".red(),
+                                        line.trim().red()
+                                    );
+                                    println!("{}", "CANCELLING BUILD".blink().blue());
+                                    exit(0);
+                                }
+                            } else if line.trim().is_empty() {
+                                continue;
+                            } else {
+                                let mut found_function_call = false;
+                                for i in fns.iter() {
+                                    if line.trim().starts_with(&(i.clone() + "();")) {
+                                        println!(
+                                            "{}{}",
+                                            "Handling function call: ".green(),
+                                            line.trim().green()
+                                        );
+                                        found_function_call = true;
+                                        break;
+                                    }
+                                }
+                                if !found_function_call {
+                                    undefined_fn_calls.push(line.trim().to_string());
+                                    println!(
+                                        "{}{} :",
+                                        "Undefined function call found, will recheck later: "
+                                            .yellow(),
+                                        line.trim().yellow()
+                                    );
                                 }
                             }
                         }
@@ -98,10 +292,10 @@ fn main() {
                     Err(err) => {
                         println!(
                             "{}{}{}{}",
-                            "Error Opening main file in the project: ",
-                            pf.clone(),
-                            " : ERR - ",
-                            err.to_string()
+                            "Error Opening main file in the project: ".red(),
+                            project_folder,
+                            " : ERR - ".red(),
+                            err.to_string().red()
                         );
                     }
                 }
@@ -110,8 +304,8 @@ fn main() {
                 if pfci != 0 {
                     println!(
                         "{}{}",
-                        "Error opening file 'main.bb' in project folder provided! \nerr - ",
-                        err.to_string()
+                        "Error opening file 'main.bb' in project folder provided! \nerr - ".red(),
+                        err.to_string().red()
                     );
                     exit(-1);
                 } else {
@@ -120,4 +314,29 @@ fn main() {
             }
         }
     }
+
+    for undefined_fn_call in &undefined_fn_calls {
+        let mut found = false;
+        for func in &fns {
+            if undefined_fn_call.starts_with(&(func.clone() + "();")) {
+                found = true;
+                println!("{} {} {} :","function call declared fixing stuff...: ",func.clone(),undefined_fn_call);
+                break;
+            }
+        }
+        if !found {
+            println!(
+                "{}{}",
+                "ERROR - Undefined function call found: ".red(),
+                undefined_fn_call.red()
+            );
+            exit(1);
+        }
+    }
+
+    for i in vrs {
+        Varr::dis(i);
+    }
+
+    println!("{}", "Build successful!".green());
 }
