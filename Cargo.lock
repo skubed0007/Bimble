@@ -13,11 +13,12 @@ dependencies = [
 
 [[package]]
 name = "bimble"
-version = "0.1.0"
+version = "0.8.0"
 dependencies = [
  "clearscreen",
  "colored",
  "regex",
+ "s_nor",
 ]
 
 [[package]]
@@ -307,6 +308,16 @@ dependencies = [
  "libc",
  "linux-raw-sys",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "s_nor"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "250450a8d7f5d332b1a418e7d6e5f04128a57551af5cbd6915651f66ad5d9dd8"
+dependencies = [
+ "clearscreen",
+ "colored",
 ]
 
 [[package]]

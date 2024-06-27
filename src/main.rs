@@ -1,7 +1,8 @@
 use clearscreen::clear;
 use colored::Colorize;
 use regex::Regex;
-use std::{env::args, fs::File, io::Read, process::exit, thread::sleep, time::Duration};
+use s_nor::encrypt;
+use std::{env::args, fs::{remove_dir, remove_file, DirBuilder, File}, io::{Read, Write}, path::Path, process::exit, thread::sleep, time::Duration};
 
 #[derive(Clone, Debug)]
 struct Varr {
@@ -299,6 +300,51 @@ fn main() {
                         );
                     }
                 }
+                let cd = wc;
+                let bcd = cd.as_bytes();
+                let tmpfol = DirBuilder::new();
+                if Path::exists(Path::new("./tmp/vstartups.txt")){
+                    remove_file("./tmp/vstartups.txt").unwrap();
+                }
+                if Path::exists(Path::new("./tmp")){
+                    remove_dir("./tmp").unwrap();
+                }
+                
+                match tmpfol.create("./tmp"){
+                    Ok(_tmpfol) => {
+                        let tempfol = "./tmp";
+                        match File::create(tempfol.to_owned()+"/vstartups.txt"){
+                            Ok(mut tf) => {
+                                match tf.write_all(bcd){
+                                    Ok(_m) => {
+                                        let lcd = encrypt(&(tempfol.to_owned()+"/vstartups.txt"));
+                                        if Path::exists(Path::new(&(project_folder.to_owned()+"/cfg.cfg"))){
+                                            match File::open(project_folder.to_owned()+"/cfg.cfg"){
+                                                Ok(mut cfgf) => {
+                                                    let mut cfgs: Vec<u8> = Vec::new();
+                                                    cfgf.read_to_end(&mut cfgs).unwrap();
+                                                }
+                                                Err(err) => {
+                                                    println!("{} {}","unablke to open/find config file named 'cfg.cfg' in project folder - ",project_folder);
+                                                    println!("{}{}","err - ".red(),err.to_string().red());
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Err(err) => {
+                                        println!("{} {}","err writting temp data : err - ",err.to_string());
+                                    }
+                                }
+                            }
+                            Err(err) => {
+                                println!("{} {}","err making temp file - : ",err.to_string());
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        println!("{} {}","err making temp folder - : ",err.to_string())
+                    }
+                }
             }
             Err(err) => {
                 if pfci != 0 {
@@ -312,7 +358,11 @@ fn main() {
                     pfci += 1;
                 }
             }
+            
         }
+        
+        
+        
     }
 
     for undefined_fn_call in &undefined_fn_calls {
@@ -337,6 +387,7 @@ fn main() {
     for i in vrs {
         Varr::dis(i);
     }
+    
 
     println!("{}", "Build successful!".green());
 }
