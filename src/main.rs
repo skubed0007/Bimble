@@ -2,13 +2,28 @@ use clearscreen::clear;
 use colored::Colorize;
 use regex::Regex;
 use s_nor::encrypt;
-use std::{env::args, fs::{remove_dir, remove_file, DirBuilder, File}, io::{Read, Write}, path::Path, process::exit, thread::sleep, time::Duration};
+use std::{
+    env::args,
+    fs::{remove_dir, remove_file, DirBuilder, File},
+    io::{Read, Write},
+    path::Path,
+    process::exit,
+    thread::sleep,
+    time::Duration,
+};
 
 #[derive(Clone, Debug)]
 struct Varr {
     name: String,
     vtype: Vartypes,
     vval: String,
+}
+
+#[derive(Debug)]
+struct CFG {
+    name: String,
+    date: String,
+    auth: String,
 }
 
 #[derive(Debug, Clone)]
@@ -199,11 +214,9 @@ fn main() {
                                     println!("{}", "CANCELLING BUILD".blink().blue());
                                     exit(0);
                                 }
-                            }
-                            else if line.trim() == "out.flush();"{
-                                println!("{} {}","buffer flusher called here : ",line.trim());
-                            }
-                             else if line.trim().starts_with("echol") {
+                            } else if line.trim() == "out.flush();" {
+                                println!("{} {}", "buffer flusher called here : ", line.trim());
+                            } else if line.trim().starts_with("echol") {
                                 println!(
                                     "{}{}",
                                     "Handling 'echol' - ".green(),
@@ -303,46 +316,92 @@ fn main() {
                 let cd = wc;
                 let bcd = cd.as_bytes();
                 let tmpfol = DirBuilder::new();
-                if Path::exists(Path::new("./tmp/vstartups.txt")){
+                if Path::exists(Path::new("./tmp/vstartups.txt")) {
                     remove_file("./tmp/vstartups.txt").unwrap();
                 }
-                if Path::exists(Path::new("./tmp")){
+                if Path::exists(Path::new("./tmp")) {
                     remove_dir("./tmp").unwrap();
                 }
-                
-                match tmpfol.create("./tmp"){
+
+                match tmpfol.create("./tmp") {
                     Ok(_tmpfol) => {
                         let tempfol = "./tmp";
-                        match File::create(tempfol.to_owned()+"/vstartups.txt"){
+                        match File::create(tempfol.to_owned() + "/vstartups.txt") {
                             Ok(mut tf) => {
-                                match tf.write_all(bcd){
+                                match tf.write_all(bcd) {
                                     Ok(_m) => {
-                                        let lcd = encrypt(&(tempfol.to_owned()+"/vstartups.txt"));
-                                        if Path::exists(Path::new(&(project_folder.to_owned()+"/cfg.cfg"))){
-                                            match File::open(project_folder.to_owned()+"/cfg.cfg"){
+                                        let _lcd =
+                                            encrypt(&(tempfol.to_owned() + "/vstartups.txt"));
+                                        if Path::exists(Path::new(
+                                            &(project_folder.to_owned() + "/cfg.bcf"),
+                                        )) {
+                                            match File::open(project_folder.to_owned() + "/cfg.bcf")
+                                            {
                                                 Ok(mut cfgf) => {
-                                                    let mut cfgs: Vec<u8> = Vec::new();
-                                                    cfgf.read_to_end(&mut cfgs).unwrap();
+                                                    let mut cfgs = String::new();
+                                                    cfgf.read_to_string(&mut cfgs).unwrap();
+                                                    //println!("\n\ncfg : {}",cfgs.trim());
+                                                    let cfg = cfgs.split("\n");
+                                                    let mut c = CFG {
+                                                        name: String::new(),
+                                                        date: String::new(),
+                                                        auth: String::new(),
+                                                    };
+                                                    for cfg in cfg {
+                                                        if cfg.starts_with("NAME") {
+                                                            let i = cfg.split(":");
+                                                            for m in i {
+                                                                if m != "NAME" {
+                                                                    c.name = m.trim().to_string();
+                                                                }
+                                                            }
+                                                        } else if cfg.starts_with("DATE") {
+                                                            let i = cfg.split(":");
+                                                            for m in i {
+                                                                if m != "DATE" {
+                                                                    c.date = m.trim().to_string();
+                                                                }
+                                                            }
+                                                        } else if cfg.starts_with("AUTHORS") {
+                                                            let i = cfg.split(":");
+                                                            for m in i {
+                                                                if m != "DATE" {
+                                                                    c.auth = m.trim().to_string();
+                                                                }
+                                                            }
+                                                        } else {
+                                                            continue;
+                                                        }
+                                                    }
+                                                    println!("\n\ncfg - {:?}\n\n", c);
                                                 }
                                                 Err(err) => {
-                                                    println!("{} {}","unablke to open/find config file named 'cfg.cfg' in project folder - ",project_folder);
-                                                    println!("{}{}","err - ".red(),err.to_string().red());
+                                                    println!("{} {}","unable to open/find config file named 'cfg.cfg' in project folder - ",project_folder);
+                                                    println!(
+                                                        "{}{}",
+                                                        "err - ".red(),
+                                                        err.to_string().red()
+                                                    );
                                                 }
                                             }
                                         }
                                     }
                                     Err(err) => {
-                                        println!("{} {}","err writting temp data : err - ",err.to_string());
+                                        println!(
+                                            "{} {}",
+                                            "err writting temp data : err - ",
+                                            err.to_string()
+                                        );
                                     }
                                 }
                             }
                             Err(err) => {
-                                println!("{} {}","err making temp file - : ",err.to_string());
+                                println!("{} {}", "err making temp file - : ", err.to_string());
                             }
                         }
                     }
                     Err(err) => {
-                        println!("{} {}","err making temp folder - : ",err.to_string())
+                        println!("{} {}", "err making temp folder - : ", err.to_string())
                     }
                 }
             }
@@ -358,11 +417,7 @@ fn main() {
                     pfci += 1;
                 }
             }
-            
         }
-        
-        
-        
     }
 
     for undefined_fn_call in &undefined_fn_calls {
@@ -370,7 +425,12 @@ fn main() {
         for func in &fns {
             if undefined_fn_call.starts_with(&(func.clone() + "();")) {
                 found = true;
-                println!("{} {} {} :","function call declared fixing stuff...: ",func.clone(),undefined_fn_call);
+                println!(
+                    "{} {} {} :",
+                    "function call declared fixing stuff...: ",
+                    func.clone(),
+                    undefined_fn_call
+                );
                 break;
             }
         }
@@ -387,7 +447,6 @@ fn main() {
     for i in vrs {
         Varr::dis(i);
     }
-    
 
     println!("{}", "Build successful!".green());
 }
