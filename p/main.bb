@@ -1,10 +1,10 @@
 ON main(){
-    may nm  = "name";
+    may nm  = 1;
     echonl("my name is ",nm);
     takein(nm);
     out();
 }
 ON out(){
-    out.flush();
     echol("hru?");
+    out.flush();
 }

@@ -124,7 +124,7 @@ fn main() {
                                 isinfn = false;
                             } else if line.trim().starts_with("takein") {
                                 println!("{}","Handeling takein()..".green());
-                                match Regex::new(r#"takein\(\((.*?)\)\);"#) {
+                                match Regex::new(r#"takein\((.*?)\);"#) {
                                     Ok(tirg) => {
                                         if let Some(cap) = tirg.captures(line.trim()) {
                                             let tkvr = cap.get(1).unwrap().as_str();
@@ -144,6 +144,7 @@ fn main() {
                                                             "in 'takein()' - ".red(),
                                                             line.trim().red()
                                                         );
+                                                        exit(0);
                                                     }
                                                 }
                                             }
