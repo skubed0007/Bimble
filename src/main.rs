@@ -1,10 +1,9 @@
 use clearscreen::clear;
 use colored::Colorize;
 use regex::Regex;
-use s_nor::encrypt;
 use std::{
     env::args,
-    fs::{remove_dir, remove_file, DirBuilder, File},
+    fs::{self, remove_dir, remove_file, DirBuilder, File},
     io::{Read, Write},
     path::Path,
     process::exit,
@@ -19,12 +18,20 @@ struct Varr {
     vval: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct CFG {
     name: String,
     date: String,
     auth: String,
 }
+
+trait Gen {
+    fn gen(c: CFG) -> String {
+        let dat = format!("{}|{}|{}", c.name, c.date, c.auth);
+        return dat;
+    }
+}
+impl Gen for CFG {}
 
 #[derive(Debug, Clone)]
 enum Vartypes {
@@ -127,32 +134,43 @@ fn main() {
                                 if let Some(cap) = vardecltrg.captures(line.trim()) {
                                     let varnm = cap.get(1).unwrap().as_str().to_string();
                                     let varval = cap.get(2).unwrap().as_str().to_string();
-                                    let vartype =
-                                        if varval.starts_with('"') && varval.ends_with('"') {
-                                            Vartypes::String
-                                        } else if varval.parse::<i32>().is_ok() {
-                                            Vartypes::I
-                                        } else if varval.parse::<f32>().is_ok() {
-                                            Vartypes::Fsf
+                                    // Replace this part within your code
+                                    //let mut val = String::new();
+                                    let vartype = if varval.starts_with('"') && varval.ends_with('"') {
+                                        Vartypes::String
+                                    } else if varval.parse::<i32>().is_ok() {
+                                        Vartypes::I
+                                    } else if varval.parse::<f32>().is_ok() {
+                                        Vartypes::Fsf
+                                    } else {
+                                        if varval.contains("+")
+                                            || varval.contains("+")
+                                            || varval.contains("-")
+                                            || varval.contains("*")
+                                            || varval.contains("/")
+                                        {
+                                            println!("{}{}","Please use arithematic functions for math : ".red(),line.trim().red());
+                                            exit(0);
                                         } else {
                                             println!(
-                                                "{}{}{}{} :",
-                                                "Invalid variable type! : ".red(),
-                                                varval.red(),
-                                                " : in line : ".red(),
-                                                line.trim().red()
+                                                "Invalid variable type! : {} : in line : {}",
+                                                varval,
+                                                line.trim()
                                             );
-                                            exit(0);
-                                        };
+                                            exit(1);
+                                        }
+                                    };
+
                                     let var = Varr {
                                         name: varnm,
                                         vtype: vartype,
-                                        vval: varval,
+                                        vval: varval.clone(),
                                     };
+
                                     vrs.push(var.clone());
                                     Varr::dis(var);
                                 } else {
-                                    println!("{}", "Unable to make variable pattern!!".red());
+                                    println!("{}", "Unable to parse variable declaration".red());
                                     exit(0);
                                 }
                             } else if line.trim().starts_with("echonl") {
@@ -330,8 +348,12 @@ fn main() {
                             Ok(mut tf) => {
                                 match tf.write_all(bcd) {
                                     Ok(_m) => {
-                                        let _lcd =
-                                            encrypt(&(tempfol.to_owned() + "/vstartups.txt"));
+                                        let mut lcd = String::new();
+                                        let mut f =
+                                            File::open(tempfol.to_owned() + "/vstartups.txt")
+                                                .unwrap();
+                                        f.read_to_string(&mut lcd).unwrap();
+
                                         if Path::exists(Path::new(
                                             &(project_folder.to_owned() + "/cfg.bcf"),
                                         )) {
@@ -373,7 +395,44 @@ fn main() {
                                                             continue;
                                                         }
                                                     }
-                                                    println!("\n\ncfg - {:?}\n\n", c);
+                                                    // After creating `topacc`
+                                                    let topacc =
+                                                        format!("{}@{}", CFG::gen(c.clone()), lcd);
+                                                    //let fd = topacc.clone().into_bytes(); // Convert to bytes using into_bytes()
+
+                                                    // Clear temporary files and directory
+                                                    fs::remove_file(
+                                                        tempfol.to_owned() + "/vstartups.txt",
+                                                    )
+                                                    .unwrap();
+                                                    fs::remove_dir(tempfol.to_owned()).unwrap();
+
+                                                    // Create BXE file and write bytes to it
+                                                    let bxef = format!(
+                                                        "{}/{}.bxe",
+                                                        project_folder, c.name
+                                                    );
+                                                    let mut bindat = String::new();
+                                                    for i in topacc.into_bytes() {
+                                                        bindat += &format!("0{:b}`", i).to_string();
+                                                    }
+                                                    match File::create(&bxef) {
+                                                        Ok(mut bxe) => match bxe
+                                                            .write_all(&bindat.as_bytes())
+                                                        {
+                                                            Ok(_) => println!(
+                                                                "Successfully wrote to BXE file."
+                                                            ),
+                                                            Err(err) => println!(
+                                                                "{} - {}",
+                                                                "Error writing to BXE file:".red(),
+                                                                err.to_string().red()
+                                                            ),
+                                                        },
+                                                        Err(err) => {
+                                                            println!("{} - {}", "Unable to create BXE (Bimble executable) file, err - ".red(), err.to_string().red());
+                                                        }
+                                                    }
                                                 }
                                                 Err(err) => {
                                                     println!("{} {}","unable to open/find config file named 'cfg.cfg' in project folder - ",project_folder);

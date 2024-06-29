@@ -18,7 +18,7 @@ dependencies = [
  "clearscreen",
  "colored",
  "regex",
- "s_nor",
+ "to-binary",
 ]
 
 [[package]]
@@ -114,6 +114,12 @@ dependencies = [
  "libc",
  "wasi",
 ]
+
+[[package]]
+name = "hex"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "home"
@@ -311,16 +317,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "s_nor"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "250450a8d7f5d332b1a418e7d6e5f04128a57551af5cbd6915651f66ad5d9dd8"
-dependencies = [
- "clearscreen",
- "colored",
-]
-
-[[package]]
 name = "siphasher"
 version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -368,6 +364,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "to-binary"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4424552bc848fd1afbcd81f0e8a54b7401b90fd81bb418655ad6dc6d0823bbe3"
+dependencies = [
+ "hex",
 ]
 
 [[package]]
