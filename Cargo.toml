@@ -1,9 +1,12 @@
 [package]
 name = "bimble"
-version = "0.1.0"
+version = "0.8.0"
 edition = "2021"
+authors = ["Virtua-Startups"]
+description = "The bimble programming language"
 
 [dependencies]
 clearscreen = "3.0.0"
 colored = "2.1.0"
 regex = "1.10.5"
+to-binary = "0.4.0"

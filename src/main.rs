@@ -1,7 +1,15 @@
 use clearscreen::clear;
 use colored::Colorize;
 use regex::Regex;
-use std::{env::args, fs::File, io::Read, process::exit, thread::sleep, time::Duration};
+use std::{
+    env::args,
+    fs::{self, remove_dir, remove_file, DirBuilder, File},
+    io::{Read, Write},
+    path::Path,
+    process::exit,
+    thread::sleep,
+    time::Duration,
+};
 
 #[derive(Clone, Debug)]
 struct Varr {
@@ -11,6 +19,21 @@ struct Varr {
 }
 
 #[derive(Debug, Clone)]
+struct CFG {
+    name: String,
+    date: String,
+    auth: String,
+}
+
+trait Gen {
+    fn gen(c: CFG) -> String {
+        let dat = format!("{}|{}|{}", c.name, c.date, c.auth);
+        return dat;
+    }
+}
+impl Gen for CFG {}
+
+#[derive(Debug, Clone, PartialEq)]
 enum Vartypes {
     String,
     Fsf,
@@ -99,6 +122,56 @@ fn main() {
                                 );
                             } else if line.trim() == "}" {
                                 isinfn = false;
+                            } else if line.trim().starts_with("takein") {
+                                println!("{}","Handeling takein()..".green());
+                                match Regex::new(r#"takein\((.*?)\);"#) {
+                                    Ok(tirg) => {
+                                        if let Some(cap) = tirg.captures(line.trim()) {
+                                            let tkvr = cap.get(1).unwrap().as_str();
+                                            let mut vb = false;
+                                            for vr in vrs.clone() {
+                                                if vr.name == tkvr {
+                                                    if vr.vtype == Vartypes::String {
+                                                        vb = true;
+                                                    } else {
+                                                        println!(
+                                                            "{} {}",
+                                                            "Variable isnt of string type : ".red(),
+                                                            tkvr.red()
+                                                        );
+                                                        println!(
+                                                            "{}{}",
+                                                            "in 'takein()' - ".red(),
+                                                            line.trim().red()
+                                                        );
+                                                        exit(0);
+                                                    }
+                                                }
+                                            }
+                                            if vb {
+                                                continue;
+                                            } else {
+                                                println!(
+                                                    "{} {}",
+                                                    "Variable doesnt exists : ".red(),
+                                                    tkvr.red()
+                                                );
+                                                println!(
+                                                    "{}{}",
+                                                    "in 'takein()' - ".red(),
+                                                    line.trim().red()
+                                                );
+                                            }
+                                        }
+                                    }
+                                    Err(err) => {
+                                        println!(
+                                            "{} {}",
+                                            "Unable to create 'takein()' regex err - ".red(),
+                                            err.to_string().red()
+                                        );
+                                    }
+                                }
                             } else if line.trim().starts_with("may") {
                                 println!(
                                     "{}{}",
@@ -111,6 +184,8 @@ fn main() {
                                 if let Some(cap) = vardecltrg.captures(line.trim()) {
                                     let varnm = cap.get(1).unwrap().as_str().to_string();
                                     let varval = cap.get(2).unwrap().as_str().to_string();
+                                    // Replace this part within your code
+                                    //let mut val = String::new();
                                     let vartype =
                                         if varval.starts_with('"') && varval.ends_with('"') {
                                             Vartypes::String
@@ -119,24 +194,42 @@ fn main() {
                                         } else if varval.parse::<f32>().is_ok() {
                                             Vartypes::Fsf
                                         } else {
-                                            println!(
-                                                "{}{}{}{} :",
-                                                "Invalid variable type! : ".red(),
-                                                varval.red(),
-                                                " : in line : ".red(),
-                                                line.trim().red()
-                                            );
-                                            exit(0);
+                                            if varval.contains("+")
+                                                || varval.contains("+")
+                                                || varval.contains("-")
+                                                || varval.contains("*")
+                                                || varval.contains("/")
+                                            {
+                                                println!(
+                                                    "{}{}",
+                                                    "Please use arithematic functions for math : "
+                                                        .red(),
+                                                    line.trim().red()
+                                                );
+                                                exit(0);
+                                            } else {
+                                                println!(
+                                                    "{}{}{}{}{}",
+                                                    "invalid variable type : ".red(),
+                                                    varval.red(),
+                                                    " : in variable declaration : ".red(),
+                                                    line.trim(),
+                                                    " :".red()
+                                                );
+                                                exit(0);
+                                            }
                                         };
+
                                     let var = Varr {
                                         name: varnm,
                                         vtype: vartype,
-                                        vval: varval,
+                                        vval: varval.clone(),
                                     };
+
                                     vrs.push(var.clone());
                                     Varr::dis(var);
                                 } else {
-                                    println!("{}", "Unable to make variable pattern!!".red());
+                                    println!("{}", "Unable to parse variable declaration".red());
                                     exit(0);
                                 }
                             } else if line.trim().starts_with("echonl") {
@@ -198,11 +291,9 @@ fn main() {
                                     println!("{}", "CANCELLING BUILD".blink().blue());
                                     exit(0);
                                 }
-                            }
-                            else if line.trim() == "out.flush();"{
-                                println!("{} {}","buffer flusher called here : ",line.trim());
-                            }
-                             else if line.trim().starts_with("echol") {
+                            } else if line.trim() == "out.flush();" {
+                                println!("{} {}", "buffer flusher called here : ", line.trim());
+                            } else if line.trim().starts_with("echol") {
                                 println!(
                                     "{}{}",
                                     "Handling 'echol' - ".green(),
@@ -299,6 +390,138 @@ fn main() {
                         );
                     }
                 }
+                let cd = wc;
+                let bcd = cd.as_bytes();
+                let tmpfol = DirBuilder::new();
+                if Path::exists(Path::new("./tmp/vstartups.txt")) {
+                    remove_file("./tmp/vstartups.txt").unwrap();
+                }
+                if Path::exists(Path::new("./tmp")) {
+                    remove_dir("./tmp").unwrap();
+                }
+
+                match tmpfol.create("./tmp") {
+                    Ok(_tmpfol) => {
+                        let tempfol = "./tmp";
+                        match File::create(tempfol.to_owned() + "/vstartups.txt") {
+                            Ok(mut tf) => {
+                                match tf.write_all(bcd) {
+                                    Ok(_m) => {
+                                        let mut lcd = String::new();
+                                        let mut f =
+                                            File::open(tempfol.to_owned() + "/vstartups.txt")
+                                                .unwrap();
+                                        f.read_to_string(&mut lcd).unwrap();
+
+                                        if Path::exists(Path::new(
+                                            &(project_folder.to_owned() + "/cfg.bcf"),
+                                        )) {
+                                            match File::open(project_folder.to_owned() + "/cfg.bcf")
+                                            {
+                                                Ok(mut cfgf) => {
+                                                    let mut cfgs = String::new();
+                                                    cfgf.read_to_string(&mut cfgs).unwrap();
+                                                    //println!("\n\ncfg : {}",cfgs.trim());
+                                                    let cfg = cfgs.split("\n");
+                                                    let mut c = CFG {
+                                                        name: String::new(),
+                                                        date: String::new(),
+                                                        auth: String::new(),
+                                                    };
+                                                    for cfg in cfg {
+                                                        if cfg.starts_with("NAME") {
+                                                            let i = cfg.split(":");
+                                                            for m in i {
+                                                                if m != "NAME" {
+                                                                    c.name = m.trim().to_string();
+                                                                }
+                                                            }
+                                                        } else if cfg.starts_with("DATE") {
+                                                            let i = cfg.split(":");
+                                                            for m in i {
+                                                                if m != "DATE" {
+                                                                    c.date = m.trim().to_string();
+                                                                }
+                                                            }
+                                                        } else if cfg.starts_with("AUTHORS") {
+                                                            let i = cfg.split(":");
+                                                            for m in i {
+                                                                if m != "DATE" {
+                                                                    c.auth = m.trim().to_string();
+                                                                }
+                                                            }
+                                                        } else {
+                                                            continue;
+                                                        }
+                                                    }
+                                                    // After creating `topacc`
+                                                    let topacc =
+                                                        format!("{}@{}", CFG::gen(c.clone()), lcd);
+                                                    //let fd = topacc.clone().into_bytes(); // Convert to bytes using into_bytes()
+
+                                                    // Clear temporary files and directory
+                                                    fs::remove_file(
+                                                        tempfol.to_owned() + "/vstartups.txt",
+                                                    )
+                                                    .unwrap();
+                                                    fs::remove_dir(tempfol.to_owned()).unwrap();
+
+                                                    // Create BXE file and write bytes to it
+                                                    let bxef = format!(
+                                                        "{}/{}.bxe",
+                                                        project_folder, c.name
+                                                    );
+                                                    let mut bindat = String::new();
+                                                    for i in topacc.into_bytes() {
+                                                        bindat += &format!("0{:b}`", i).to_string();
+                                                    }
+                                                    match File::create(&bxef) {
+                                                        Ok(mut bxe) => match bxe
+                                                            .write_all(&bindat.as_bytes())
+                                                        {
+                                                            Ok(_) => println!(
+                                                                "Successfully wrote to BXE file."
+                                                            ),
+                                                            Err(err) => println!(
+                                                                "{} - {}",
+                                                                "Error writing to BXE file:".red(),
+                                                                err.to_string().red()
+                                                            ),
+                                                        },
+                                                        Err(err) => {
+                                                            println!("{} - {}", "Unable to create BXE (Bimble executable) file, err - ".red(), err.to_string().red());
+                                                        }
+                                                    }
+                                                }
+                                                Err(err) => {
+                                                    println!("{} {}","unable to open/find config file named 'cfg.cfg' in project folder - ",project_folder);
+                                                    println!(
+                                                        "{}{}",
+                                                        "err - ".red(),
+                                                        err.to_string().red()
+                                                    );
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Err(err) => {
+                                        println!(
+                                            "{} {}",
+                                            "err writting temp data : err - ",
+                                            err.to_string()
+                                        );
+                                    }
+                                }
+                            }
+                            Err(err) => {
+                                println!("{} {}", "err making temp file - : ", err.to_string());
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        println!("{} {}", "err making temp folder - : ", err.to_string())
+                    }
+                }
             }
             Err(err) => {
                 if pfci != 0 {
@@ -320,7 +543,12 @@ fn main() {
         for func in &fns {
             if undefined_fn_call.starts_with(&(func.clone() + "();")) {
                 found = true;
-                println!("{} {} {} :","function call declared fixing stuff...: ",func.clone(),undefined_fn_call);
+                println!(
+                    "{} {} {} :",
+                    "function call declared fixing stuff...: ",
+                    func.clone(),
+                    undefined_fn_call
+                );
                 break;
             }
         }
