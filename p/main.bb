@@ -1,4 +1,5 @@
 ON main(){
-    may nm  = 11(+11);
+    may nm  = "name";
     echonl("my name is ",nm);
+    takein(nm);
 }

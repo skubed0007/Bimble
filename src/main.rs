@@ -33,7 +33,7 @@ trait Gen {
 }
 impl Gen for CFG {}
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 enum Vartypes {
     String,
     Fsf,
@@ -122,6 +122,55 @@ fn main() {
                                 );
                             } else if line.trim() == "}" {
                                 isinfn = false;
+                            } else if line.trim().starts_with("takein") {
+                                println!("{}","Handeling takein()..".green());
+                                match Regex::new(r#"takein\(\((.*?)\)\);"#) {
+                                    Ok(tirg) => {
+                                        if let Some(cap) = tirg.captures(line.trim()) {
+                                            let tkvr = cap.get(1).unwrap().as_str();
+                                            let mut vb = false;
+                                            for vr in vrs.clone() {
+                                                if vr.name == tkvr {
+                                                    if vr.vtype == Vartypes::String {
+                                                        vb = true;
+                                                    } else {
+                                                        println!(
+                                                            "{} {}",
+                                                            "Variable isnt of string type : ".red(),
+                                                            tkvr.red()
+                                                        );
+                                                        println!(
+                                                            "{}{}",
+                                                            "in 'takein()' - ".red(),
+                                                            line.trim().red()
+                                                        );
+                                                    }
+                                                }
+                                            }
+                                            if vb {
+                                                continue;
+                                            } else {
+                                                println!(
+                                                    "{} {}",
+                                                    "Variable doesnt exists : ".red(),
+                                                    tkvr.red()
+                                                );
+                                                println!(
+                                                    "{}{}",
+                                                    "in 'takein()' - ".red(),
+                                                    line.trim().red()
+                                                );
+                                            }
+                                        }
+                                    }
+                                    Err(err) => {
+                                        println!(
+                                            "{} {}",
+                                            "Unable to create 'takein()' regex err - ".red(),
+                                            err.to_string().red()
+                                        );
+                                    }
+                                }
                             } else if line.trim().starts_with("may") {
                                 println!(
                                     "{}{}",
@@ -136,30 +185,39 @@ fn main() {
                                     let varval = cap.get(2).unwrap().as_str().to_string();
                                     // Replace this part within your code
                                     //let mut val = String::new();
-                                    let vartype = if varval.starts_with('"') && varval.ends_with('"') {
-                                        Vartypes::String
-                                    } else if varval.parse::<i32>().is_ok() {
-                                        Vartypes::I
-                                    } else if varval.parse::<f32>().is_ok() {
-                                        Vartypes::Fsf
-                                    } else {
-                                        if varval.contains("+")
-                                            || varval.contains("+")
-                                            || varval.contains("-")
-                                            || varval.contains("*")
-                                            || varval.contains("/")
-                                        {
-                                            println!("{}{}","Please use arithematic functions for math : ".red(),line.trim().red());
-                                            exit(0);
+                                    let vartype =
+                                        if varval.starts_with('"') && varval.ends_with('"') {
+                                            Vartypes::String
+                                        } else if varval.parse::<i32>().is_ok() {
+                                            Vartypes::I
+                                        } else if varval.parse::<f32>().is_ok() {
+                                            Vartypes::Fsf
                                         } else {
-                                            println!(
-                                                "Invalid variable type! : {} : in line : {}",
-                                                varval,
-                                                line.trim()
-                                            );
-                                            exit(1);
-                                        }
-                                    };
+                                            if varval.contains("+")
+                                                || varval.contains("+")
+                                                || varval.contains("-")
+                                                || varval.contains("*")
+                                                || varval.contains("/")
+                                            {
+                                                println!(
+                                                    "{}{}",
+                                                    "Please use arithematic functions for math : "
+                                                        .red(),
+                                                    line.trim().red()
+                                                );
+                                                exit(0);
+                                            } else {
+                                                println!(
+                                                    "{}{}{}{}{}",
+                                                    "invalid variable type : ".red(),
+                                                    varval.red(),
+                                                    " : in variable declaration : ".red(),
+                                                    line.trim(),
+                                                    " :".red()
+                                                );
+                                                exit(0);
+                                            }
+                                        };
 
                                     let var = Varr {
                                         name: varnm,
