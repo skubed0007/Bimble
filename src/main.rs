@@ -123,7 +123,7 @@ fn main() {
                             } else if line.trim() == "}" {
                                 isinfn = false;
                             } else if line.trim().starts_with("takein") {
-                                println!("{}","Handeling takein()..".green());
+                                println!("{}", "Handeling takein()..".green());
                                 match Regex::new(r#"takein\((.*?)\);"#) {
                                     Ok(tirg) => {
                                         if let Some(cap) = tirg.captures(line.trim()) {
@@ -390,6 +390,34 @@ fn main() {
                         );
                     }
                 }
+                for undefined_fn_call in &undefined_fn_calls {
+                    let mut found = false;
+                    for func in &fns {
+                        if undefined_fn_call.starts_with(&(func.clone() + "();")) {
+                            found = true;
+                            println!(
+                                "{} {} {} :",
+                                "function call declared fixing stuff...: ",
+                                func.clone(),
+                                undefined_fn_call
+                            );
+                            break;
+                        }
+                    }
+                    if !found {
+                        println!(
+                            "{}{}",
+                            "ERROR - Undefined function call found: ".red(),
+                            undefined_fn_call.red()
+                        );
+                        exit(1);
+                    }
+                }
+
+                for i in vrs.clone() {
+                    Varr::dis(i);
+                }
+
                 let cd = wc;
                 let bcd = cd.as_bytes();
                 let tmpfol = DirBuilder::new();
@@ -473,7 +501,16 @@ fn main() {
                                                     );
                                                     let mut bindat = String::new();
                                                     for i in topacc.into_bytes() {
-                                                        bindat += &format!("0{:b}`", i).to_string();
+                                                        if i == u8::MAX {
+                                                            bindat +=
+                                                                &format!("0{:b}`", i).to_string();
+                                                        } else {
+                                                            bindat += &format!(
+                                                                "0{:b}`",
+                                                                i.wrapping_add(1)
+                                                            )
+                                                            .to_string();
+                                                        }
                                                     }
                                                     match File::create(&bxef) {
                                                         Ok(mut bxe) => match bxe
@@ -536,34 +573,6 @@ fn main() {
                 }
             }
         }
-    }
-
-    for undefined_fn_call in &undefined_fn_calls {
-        let mut found = false;
-        for func in &fns {
-            if undefined_fn_call.starts_with(&(func.clone() + "();")) {
-                found = true;
-                println!(
-                    "{} {} {} :",
-                    "function call declared fixing stuff...: ",
-                    func.clone(),
-                    undefined_fn_call
-                );
-                break;
-            }
-        }
-        if !found {
-            println!(
-                "{}{}",
-                "ERROR - Undefined function call found: ".red(),
-                undefined_fn_call.red()
-            );
-            exit(1);
-        }
-    }
-
-    for i in vrs {
-        Varr::dis(i);
     }
 
     println!("{}", "Build successful!".green());
