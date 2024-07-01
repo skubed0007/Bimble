@@ -30,12 +30,12 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: v1.0.3
-        release_name: Release v1.0.3
+        tag_name: v1.0.4
+        release_name: Release v1.0.4
         body: |
-          Release notes for v1.0.3
+          Release notes for v1.0.4
 
-          Removed windows, mac, source code, targets folders and integrations and kept bimble the command and changed fork and recreated from ground up and updated repo     
+          Removed windows, mac, source code, targets folders and integrations and kept bimble the command and changed fork and recreated from ground up and updated repo and added readme file    
         draft: false
         prerelease: false
 
