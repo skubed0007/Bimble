@@ -56,6 +56,7 @@ trait Dis {
 impl Dis for Varr {}
 
 #[allow(path_statements)]
+#[allow(unused_assignments)]
 fn main() {
     let mut vrs: Vec<Varr> = Vec::new();
     let mut undefined_fn_calls: Vec<String> = Vec::new();
@@ -172,7 +173,173 @@ fn main() {
                                         );
                                     }
                                 }
-                            } else if line.trim().starts_with("may") {
+                            } else if line.trim().starts_with("add") {
+                                println!("{}", "Handling addition method".green());
+                                let mut fval = String::new();
+                                match Regex::new(r"add\((.*?)\);") {
+                                    Ok(addrg) => {
+                                        println!("add regex - {:?}", addrg);
+                                        if let Some(cap) = addrg.captures(line.trim()) {
+                                            println!(
+                                                "add captures - {:?}",
+                                                cap.get(1).unwrap().as_str()
+                                            );
+                                            let statement = cap.get(1).unwrap().as_str();
+                                            let exvarsplit = statement.split(":");
+                                            let mut indx = 0;
+                                            let mut val = String::new();
+                                            let mut exp = String::new();
+                                            let mut var = Varr {
+                                                name: "i".to_string(),
+                                                vtype: Vartypes::String,
+                                                vval: "1".to_string(),
+                                            };
+                                            for ex in exvarsplit {
+                                                if indx == 0 {
+                                                    exp = ex.to_string();
+                                                    println!("expr - {}", exp);
+                                                } else if indx == 1 {
+                                                    let mut n = false;
+                                                    let mut x = 0;
+                                                    for i in vrs.clone() {
+                                                        if i.name == ex {
+                                                            var = i;
+                                                            n = true;
+                                                            println!(
+                                                                "caught variable to store - {:?}",
+                                                                var
+                                                            );
+                                                            break;
+                                                        } else if !n && x == vrs.len() {
+                                                            println!("{} {}","Variable used to store added value isnt valid - ".red(),ex.red());
+                                                            println!(
+                                                                "{}{}",
+                                                                "Line - ".red(),
+                                                                line.trim().red()
+                                                            );
+                                                            exit(0);
+                                                        } else {
+                                                            x += 1;
+                                                        }
+                                                    }
+                                                } else {
+                                                    println!(
+                                                        "{} {}",
+                                                        "Invalid amount of arguemnts - ".red(),
+                                                        line.trim().red()
+                                                    );
+                                                    exit(0);
+                                                }
+                                                indx += 1;
+                                            }
+                                            let ops = exp.split(",");
+                                            for i in ops {
+                                                println!("operators = {}", i);
+                                                match i.parse::<f64>() {
+                                                    Ok(ival) => match val.parse::<f64>() {
+                                                        //println!()
+                                                        Ok(vl) => {
+                                                            val = (ival + vl).to_string();
+                                                            fval = val.clone();
+                                                            println!("caught vl as i128 and val now is : {}\nfval - {}",val,fval);
+                                                        }
+                                                        Err(_) => {
+                                                            val = format!("{}{}", val, ival);
+                                                            fval = val.clone();
+                                                            println!("NOT caught vl as i128 and val now is : {}\nval - {}",val,fval);
+                                                        }
+                                                    },
+                                                    Err(_) => {
+                                                        if i.starts_with("\"") && i.ends_with("\"")
+                                                        {
+                                                            val = format!("{}{}", val, i);
+                                                            fval = val.clone();
+                                                            println!("caught i as string and val now is : {}\nval - {}",val,fval);
+                                                        } else if !i.starts_with("\"")
+                                                            && !i.ends_with("\"")
+                                                        {
+                                                            let mut tgv = String::new();
+                                                            for b in vrs.clone() {
+                                                                if b.name == i.trim() {
+                                                                    tgv = b.vval;
+                                                                }
+                                                            }
+                                                            if tgv.is_empty() {
+                                                                println!("{}{}","Err : Invalid variable given to add....Did you mean to give a string ? - ".red(),line.trim().red());
+                                                                exit(0);
+                                                            } else {
+                                                                println!("ygv set - {}", tgv);
+
+                                                                match tgv.parse::<i128>() {
+                                                                    Ok(itgv) => {
+                                                                        println!(
+                                                                            "itgb as i128 -  : {}",
+                                                                            itgv
+                                                                        );
+
+                                                                        match val.parse::<i128>() {
+                                                                            Ok(vl) => {
+                                                                                val = (itgv + vl)
+                                                                                    .to_string();
+                                                                                println!("after val and itgv as i128 val -  : {}",val);
+                                                                            }
+                                                                            Err(_) => {
+                                                                                val = format!(
+                                                                                    "{}{}",
+                                                                                    val, itgv
+                                                                                );
+                                                                                println!("after NOT val and itgv as i128 val -  : {}",val);
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                    Err(_) => {
+                                                                        val = format!(
+                                                                            "{}{}",
+                                                                            val, tgv
+                                                                        );
+                                                                        println!("after NOT val and tgv as i128 val is -  : {}",val);
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            var.vval = fval.clone();
+                                            match var.vval.parse::<f64>() {
+                                                Ok(_) => {
+                                                    var.vtype = Vartypes::Fsf;
+                                                }
+                                                Err(_) => match var.vval.parse::<i128>() {
+                                                    Ok(_) => {
+                                                        var.vtype = Vartypes::I;
+                                                    }
+                                                    Err(_) => {
+                                                        var.vtype = Vartypes::String;
+                                                    }
+                                                },
+                                            }
+                                            for im in &mut vrs {
+                                                if im.name == var.name.clone() {
+                                                    im.name = var.name.clone();
+                                                    im.vval = fval.clone();
+                                                    im.vtype = var.vtype.clone();
+                                                    println!("var used in add - {:?}",im);
+                                                }
+                                                
+                                            }
+                                        }
+                                    }
+                                    Err(err) => {
+                                        println!(
+                                            "{} {}",
+                                            "Unable to make regex pattern for add method - ".red(),
+                                            err.to_string().red()
+                                        );
+                                    }
+                                }
+                            }
+                             else if line.trim().starts_with("may") {
                                 println!(
                                     "{}{}",
                                     "Handling 'variables' - ".green(),
